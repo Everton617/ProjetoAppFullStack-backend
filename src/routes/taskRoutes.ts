@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors'; 
 
-import { addTask, editTask, deleteTask, completeTask } from '../taskController/taskController';
+import { getAllTasks,addTask, editTask, deleteTask, completeTask } from '../taskController/taskController';
+import { authenticateUser } from '../middleware';
 
 const taskRouter = express.Router();
 
@@ -12,9 +13,10 @@ taskRouter.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'], 
 }));
 
-taskRouter.post("/tasks", addTask);
-taskRouter.put("/tasks", editTask);
-taskRouter.put("/tasks/complete", completeTask);
-taskRouter.delete("/tasks", deleteTask);
+taskRouter.get("/tasks", authenticateUser, getAllTasks);
+taskRouter.post("/tasks", authenticateUser, addTask);
+taskRouter.put("/tasks",authenticateUser, editTask);
+taskRouter.put("/tasks/complete",authenticateUser, completeTask);
+taskRouter.delete("/tasks",authenticateUser, deleteTask);
 
 export default taskRouter;

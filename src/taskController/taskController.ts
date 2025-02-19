@@ -1,22 +1,38 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import { AuthRequest } from "../middleware";
 
 const prisma = new PrismaClient();
 
 
-export const addTask = async (req: Request, res: Response) => {
+export const getAllTasks = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, description } = req.body;
+    const userId = req.userId;
 
-    if (!email || !description) {
-      res.status(400).json({ message: "Email e descrição são obrigatórios." });
-      return;
+    if (!userId) {
+      res.status(401).json({ message: "Usuário não autenticado." });
+      return
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const tasks = await prisma.task.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
 
-    if (!user) {
-      res.status(404).json({ message: "Usuário não encontrado." });
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao buscar tarefas.", error });
+  }
+};
+
+
+export const addTask = async (req: AuthRequest, res: Response) => {
+  try {
+    const { description } = req.body;
+    const userId = req.userId;
+
+    if (!userId || !description) {
+      res.status(400).json({ message: "Descrição da tarefa é obrigatória." });
       return;
     }
 
@@ -25,106 +41,82 @@ export const addTask = async (req: Request, res: Response) => {
         description,
         done: false,
         createdAt: new Date(),
-        userId: user.id,
+        userId,
       },
     });
 
     res.status(201).json(task);
-    return;
   } catch (error) {
     res.status(500).json({ message: "Erro ao criar tarefa.", error });
-    return
   }
-}
+};
 
 
-export const editTask = async (req: Request, res: Response) => {
+export const editTask = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, taskId, description, done } = req.body;
+    const { taskId, description } = req.body;
+    const userId = req.userId;
 
-    if (!email || !taskId) {
-      res.status(400).json({ message: "Email e ID da tarefa são obrigatórios." });
-      return
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      res.status(404).json({ message: "Usuário não encontrado." });
-      return
+    if (!userId || !taskId) {
+      res.status(400).json({ message: "ID da tarefa é obrigatório." });
+      return;
     }
 
     const task = await prisma.task.updateMany({
-      where: { id: taskId, userId: user.id },
-      data: { description, done, concludedAt: done ? new Date() : null },
+      where: { id: taskId, userId },
+      data: { description },
     });
 
     if (task.count === 0) {
       res.status(404).json({ message: "Tarefa não encontrada ou usuário não tem permissão." });
-      return
+      return;
     }
 
     res.status(200).json({ message: "Tarefa atualizada com sucesso." });
-    return
   } catch (error) {
-     res.status(500).json({ message: "Erro ao atualizar tarefa.", error });
-     return
-    }
-}
+    res.status(500).json({ message: "Erro ao atualizar tarefa.", error });
+  }
+};
 
 
-export const deleteTask = async (req: Request, res: Response) => {
+export const deleteTask = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, taskId } = req.body;
+    const { taskId } = req.body;
+    const userId = req.userId;
 
-    if (!email || !taskId) {
-       res.status(400).json({ message: "Email e ID da tarefa são obrigatórios." });
-       return
-      }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-       res.status(404).json({ message: "Usuário não encontrado." });
-       return
-      }
+    if (!userId || !taskId) {
+      res.status(400).json({ message: "ID da tarefa é obrigatório." });
+      return;
+    }
 
     const task = await prisma.task.deleteMany({
-      where: { id: taskId, userId: user.id },
+      where: { id: taskId, userId },
     });
 
     if (task.count === 0) {
-       res.status(404).json({ message: "Tarefa não encontrada ou usuário não tem permissão." });
-       return
-      }
-
-     res.status(200).json({ message: "Tarefa excluída com sucesso." });
-     return
-    } catch (error) {
-     res.status(500).json({ message: "Erro ao excluir tarefa.", error });
-     return
+      res.status(404).json({ message: "Tarefa não encontrada ou usuário não tem permissão." });
+      return;
     }
-}
 
-export const completeTask = async (req: Request, res: Response) => {
+    res.status(200).json({ message: "Tarefa excluída com sucesso." });
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao excluir tarefa.", error });
+  }
+};
+
+
+export const completeTask = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, taskId } = req.body;
+    const { taskId } = req.body;
+    const userId = req.userId;
 
-    if (!email || !taskId) {
-      res.status(400).json({ message: "Email e ID da tarefa são obrigatórios." });
+    if (!userId || !taskId) {
+      res.status(400).json({ message: "ID da tarefa é obrigatório." });
       return;
     }
 
-  
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      res.status(404).json({ message: "Usuário não encontrado." });
-      return;
-    }
-
-    
     const task = await prisma.task.updateMany({
-      where: { id: taskId, userId: user.id, done: false },
+      where: { id: taskId, userId, done: false },
       data: { done: true, concludedAt: new Date() },
     });
 
