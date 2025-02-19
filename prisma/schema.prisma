@@ -20,6 +20,16 @@ model User {
   email    String   @unique
   password String
   tasks    Task[]
+   sessions Session[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }
 
 model Task {
@@ -31,4 +41,6 @@ model Task {
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+
 

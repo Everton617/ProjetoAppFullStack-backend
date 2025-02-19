@@ -1,6 +1,7 @@
 import express from 'express';
 import authRoutes from './routes/authRoutes';
 import taskRoutes from './routes/taskRoutes';
+import { isSessionActive } from './middleware';
 
 const app = express();
 
@@ -11,6 +12,9 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 
 app.use('/api', taskRoutes);
+
+
+app.get("/check-session", isSessionActive);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
