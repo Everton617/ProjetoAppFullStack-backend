@@ -105,30 +105,40 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
 };
 
 
-export const completeTask = async (req: AuthRequest, res: Response) => {
+export const toggleComplete = async (req: AuthRequest, res: Response) => {
   try {
     const { taskId } = req.body;
     const userId = req.userId;
 
     if (!userId || !taskId) {
-      res.status(400).json({ message: "ID da tarefa é obrigatório." });
-      return;
-    }
+       res.status(400).json({ message: "ID da tarefa é obrigatório." });
+       return
+      }
 
-    const task = await prisma.task.updateMany({
-      where: { id: taskId, userId, done: false },
-      data: { done: true, concludedAt: new Date() },
+   
+    const task = await prisma.task.findFirst({
+      where: { id: taskId, userId },
     });
 
-    if (task.count === 0) {
-      res.status(404).json({ message: "Tarefa não encontrada ou já está concluída." });
-      return;
-    }
+    if (!task) {
+       res.status(404).json({ message: "Tarefa não encontrada." });
+       return
+      }
 
-    res.status(200).json({ message: "Tarefa marcada como concluída com sucesso." });
+    
+    const newDoneStatus = !task.done;
+
+    const updatedTask = await prisma.task.update({
+      where: { id: taskId },
+      data: { 
+        done: newDoneStatus,
+        concludedAt: newDoneStatus ? new Date() : null, 
+      },
+    });
+
+    res.status(200).json({ message: `Tarefa marcada como ${updatedTask.done ? "concluída" : "pendente"} com sucesso.` });
   } catch (error) {
-    res.status(500).json({ message: "Erro ao concluir tarefa.", error });
+    res.status(500).json({ message: "Erro ao atualizar status da tarefa.", error });
   }
 };
-
 
